@@ -18,15 +18,17 @@ uint8_t keys;
 
 uint8_t keys;
 
+uint8_t no_serial_output = 0;
+
 uint8_t read_keys() {
     uint8_t ret = 0;
     if (!(PIND & _BV(7))) {
         ret |= K_SW_A1;
     }
-    if (!(PINC & _BV(0))) {
+    if (!(PINC & _BV(1))) {
         ret |= K_SW_A2;
     }
-    if (!(PINC & _BV(1))) {
+    if (!(PINC & _BV(2))) {
         ret |= K_SW_B;
     }
     if (!(PINC & _BV(3))) {
@@ -69,6 +71,8 @@ uint16_t compute_channel (uint8_t chan) {
 const int16_t CURVE_SLOT = 2000 / (CURVE_NODES-1);
 int16_t apply_curve(int16_t value, int8_t* curve) {
     int16_t n = value / CURVE_SLOT;
+    if (n > CURVE_NODES - 2) n = CURVE_NODES - 2;
+    if (n < 0) n = 0;
     int16_t c1 = curve[n]; c1 = c1 * 10; // -120..120 -> -1200..1200, timer value
     int16_t c2 = curve[n+1]; c2 = c2 * 10;
     int16_t lower = n * CURVE_SLOT;
@@ -114,8 +118,8 @@ int8_t raw_inputs_changed = 0;
 void get_inputs() {
     raw_inputs_changed = 0;
     for(int i = 0; i < 6; ++i) {
-        volatile int32_t in = read_adc(i);
-        if (in < raw_inputs[i] - 5 || in > raw_inputs[i] + 5) {
+        int32_t in = read_adc(i);
+        if (in <= raw_inputs[i] - 1 || in >= raw_inputs[i] + 1) {
             raw_inputs_changed = 1;
             raw_inputs[i] = in;
         }
@@ -147,7 +151,7 @@ void get_inputs() {
     uint8_t new_keys = read_keys();
     if (new_keys != keys) {
         keys = new_keys;
-//         putProg("Key change: now");
+//         putProg("M Keys");
 //         if (keys & K_MODE_A) {
 //             putProg(" ModeA");
 //         }
@@ -162,6 +166,9 @@ void get_inputs() {
 //         }
 //         if (keys & K_SW_A2) {
 //             putProg(" SwitchA2");
+//         }
+//         if (keys & K_SW_B) {
+//             putProg(" SwitchB");
 //         }
 //         putCRLF();
     }
@@ -179,17 +186,17 @@ void get_inputs() {
     Mode *mode = &(model.modes[cur_mode]);
 
     if (keys & K_SW_A1) {
-        input[SW_A] = -1000;
-    } else if (keys & K_SW_A2) {
-        input[SW_A] = 1000;
-    } else {
         input[SW_A] = 0;
+    } else if (keys & K_SW_A2) {
+        input[SW_A] = 2000;
+    } else {
+        input[SW_A] = 1000;
     }
     
     if (keys & K_SW_B) {
-        input[SW_B] = -1000;
+        input[SW_B] = 0;
     } else {
-        input[SW_B] = 1000;
+        input[SW_B] = 2000;
     }
 
     input[Virt_A] = input[mode->controls[Virt_A].source];
@@ -205,10 +212,8 @@ void get_inputs() {
     for(int8_t i = 0; i < NUM_CTLS; i++) {
         int16_t value = input[i];
 
-        // Curves are applied to all analog controls (incl. virtual)
-        if (i != SW_A && i != SW_B) {
-            value = apply_curve(input[i], mode->controls[i].curve);
-        }
+        // Curves are applied to all controls (incl. virtual and discrete!)
+        value = apply_curve(input[i], mode->controls[i].curve);
 
         // Dual rates are applied to ail, ele & rud only
         int16_t low_ep, high_ep;
@@ -227,7 +232,6 @@ void get_inputs() {
 
 uint8_t changed;
 uint16_t out_ch[NUM_CHANS];
-uint8_t no_serial_output = 0;
 
 ISR(TIMER1_COMPA_vect) { 
     static uint8_t cur_channel = 0;
