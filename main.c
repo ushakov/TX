@@ -26,14 +26,17 @@ uint8_t read_keys() {
     if (!(PINC & _BV(0))) {
         ret |= K_SW_A2;
     }
+    if (!(PINC & _BV(1))) {
+        ret |= K_SW_B;
+    }
+    if (!(PINC & _BV(3))) {
+        ret |= K_DR;
+    }
     if (!(PINC & _BV(4))) {
         ret |= K_MODE_A;
     }
     if (!(PINC & _BV(5))) {
         ret |= K_MODE_B;
-    }
-    if (!(PINC & _BV(1))) {
-        ret |= K_DR;
     }
     return ret;
 }
