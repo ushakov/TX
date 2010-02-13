@@ -109,16 +109,9 @@ uint8_t get_mode() {
 // Sample all inputs, do pre-mix processing, prepare controls[] array.
 // Called 50 times per second, should not take more than
 // 20ms - 2.5ms * (num_channels+2)! Otherwise, PPM may fall apart.
-int16_t raw_inputs[6];
-int8_t raw_inputs_changed = 0;
 void get_inputs() {
-    raw_inputs_changed = 0;
     for(int i = 0; i < 6; ++i) {
         volatile int32_t in = read_adc(i);
-        if (in < raw_inputs[i] - 5 || in > raw_inputs[i] + 5) {
-            raw_inputs_changed = 1;
-            raw_inputs[i] = in;
-        }
         if (in < adc_midpoint[i]) {
             //if (adc_min[i] > in) adc_min[i] = in;
             in = (in - adc_min[i]) * 1000 / (adc_midpoint[i] - adc_min[i]);
@@ -134,14 +127,6 @@ void get_inputs() {
             // My Pot_A and Pot_B are wired backwards
             input[i] = 2000 - input[i];
         }
-    }
-    if (raw_inputs_changed) {
-        putProg("M Raw:");
-        for (int i = 0; i < 6; ++i) {
-            putProg(" ");
-            putInt(raw_inputs[i]);
-        }
-        putCRLF();
     }
   
     uint8_t new_keys = read_keys();
