@@ -52,6 +52,7 @@ void TX_init() {
 void TX_calibrate() {
     putProg("M Calibration starting. Move sticks");
     putCRLF();
+    _delay_ms(10);
     cli();
     for (int ch = 0; ch < 6; ++ch) {
         adc_min[ch] = 3000;
