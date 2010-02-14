@@ -16,7 +16,8 @@ class Data(object):
         if self.array[location.offset] != value:
             print "setting", location.offset, "to", value
             self.array[location.offset] = value
-            self.comm.Set(location.offset, value)
+            if self.comm:
+                self.comm.Set(location.offset, value)
         else:
             print "hit at ", location.offset, "to", value
 
@@ -79,4 +80,13 @@ class TXComm(object):
         d = Data(self)
         d.array = array
         return d
+
+    def Reset(self):
+        self.Send("R R R")
+        while True:
+            line = self.Check()
+            if not line:
+                continue
+            if line == "DONE":
+                return
 

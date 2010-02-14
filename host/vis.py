@@ -31,79 +31,128 @@ class ComplexArrayWidget(gtk.Frame):
             if child != self.get_label_widget():
                 self.remove(child)
         assert isinstance(v.typ, model.Struct)
-        self.add(MakeStructWidgetInternals(v, data))
+        self.add(StructWidgetInternals(v, data))
         self.show_all()
 
-def MakeSingleEntry(var, data, name):
-    hb = gtk.HBox()
-    lab = gtk.Label(name)
-    lab.set_alignment(0, 0.5)
-    hb.pack_start(lab)
-    adj = gtk.Adjustment(data.Get(var.loc),
-                         -120, 120,
-                         1, 10, 0)
-    entry = gtk.SpinButton(adj, 1.0, 0)
-    entry.connect("changed", OnEntryChanged, None, var, data)
-    hb.pack_end(entry, expand=False)
-    return hb
+    def SetNewData(self, data):
+        self.data = data
+        self.FillIn(None, data)
 
-def MakeSimpleArrayWidget(var, data, name):
-    if var.typ.HaveNames():
-        cnt = gtk.VBox()
-        cnt.set_border_width(10)
-    else:
-        cnt = gtk.HBox()
-        lab = gtk.Label(name + " ")
-        cnt.add(lab)
+gobject.type_register(ComplexArrayWidget)
+
+class SingleEntry(gtk.HBox):
+    def __init__(self, var, data, name):
+        gtk.HBox.__init__(self)
+        lab = gtk.Label(name)
         lab.set_alignment(0, 0.5)
-    for i in range(var.typ.GetLength()):
+        self.pack_start(lab)
+        adj = gtk.Adjustment(data.Get(var.loc),
+                             -120, 120,
+                             1, 10, 0)
+        self.entry = gtk.SpinButton(adj, 1.0, 0)
+        self.entry.connect("changed", self.OnEntryChanged)
+        self.pack_end(self.entry, expand=False)
+        self.var = var
+        self.data = data
+
+    def OnEntryChanged(self, entry):
+        try:
+            val = int(self.entry.get_text())
+            self.data.Set(self.var.loc, val)
+        except ValueError:
+            pass
+
+    def SetNewData(self, data):
+        self.data = data
+        self.entry.set_value(data.Get(self.var.loc))
+
+gobject.type_register(SingleEntry)
+
+class SimpleArrayWidget(gtk.VBox):
+    def __init__(self, var, data, name):
+        gtk.VBox.__init__(self)
+        self.var = var
+        self.data = data
+        self.data_widgets = []
         if var.typ.HaveNames():
-            wgt = MakeSingleEntry(var.Get(i), data, var.typ.GetName(i))
+            cnt = gtk.VBox()
+            cnt.set_border_width(10)
         else:
-            wgt = MakeSingleEntry(var.Get(i), data, str(i))
-        cnt.add(wgt)
-    if var.typ.HaveNames():
-        frame = gtk.Frame(name)
-        frame.set_label_align(0.5, 0.5)
-        frame.add(cnt)
-        return frame
-    else:
-        return cnt
+            cnt = gtk.HBox()
+            lab = gtk.Label(name + " ")
+            cnt.add(lab)
+            lab.set_alignment(0, 0.5)
+        for i in range(var.typ.GetLength()):
+            if var.typ.HaveNames():
+                wgt = SingleEntry(var.Get(i), data, var.typ.GetName(i))
+            else:
+                wgt = SingleEntry(var.Get(i), data, str(i))
+            cnt.add(wgt)
+            self.data_widgets.append(wgt)
+        if var.typ.HaveNames():
+            frame = gtk.Frame(name)
+            frame.set_label_align(0.5, 0.5)
+            frame.add(cnt)
+            self.add(frame)
+        else:
+            self.add(cnt)
 
-def MakeStructWidget(var, data, name):
-    frame = gtk.Frame(name)
-    frame.add(MakeStructWidgetInternals(var, data))
-    return frame
+    def SetNewData(self, data):
+        self.data = data
+        for w in self.data_widgets:
+            w.SetNewData(data)
 
-def MakeStructWidgetInternals(var, data):
-    vbox = gtk.VBox()
-    if var.typ.WantsHorizontalLayout():
-        vbox = gtk.HBox()
-    vbox.set_border_width(10)
-    for name in var.typ.GetNames():
-        v = var.Get(name)
-        vbox.add(MakeWidget(v, data, name))
-    return vbox
+gobject.type_register(SimpleArrayWidget)
+
+class StructWidget(gtk.Frame):
+    def __init__(self, var, data, name):
+        gtk.Frame.__init__(self, name)
+        self.internals = StructWidgetInternals(var, data)
+        self.add(self.internals)
+
+    def SetNewData(self, data):
+        self.internals.SetNewData(data)
+
+gobject.type_register(StructWidget)
+
+class StructWidgetInternals(gtk.VBox):
+    def __init__(self, var, data):
+        gtk.VBox.__init__(self)
+        if var.typ.WantsHorizontalLayout():
+            box = gtk.HBox()
+        else:
+            box = gtk.VBox()
+        box.set_border_width(10)
+        self.data_widgets = {}
+        for name in var.typ.GetNames():
+            v = var.Get(name)
+            wgt = MakeWidget(v, data, name)
+            self.data_widgets[name] = wgt
+            box.add(wgt)
+        self.add(box)
+        self.var = var
+        self.data = data
+
+    def SetNewData(self, data):
+        self.data = data
+        for name in self.var.typ.GetNames():
+            w = self.data_widgets[name]
+            w.SetNewData(data)
+
+gobject.type_register(StructWidgetInternals)
 
 def MakeWidget(var, data, name):
     if isinstance(var.typ, model.Value):
-        return MakeSingleEntry(var, data, name)
+        return SingleEntry(var, data, name)
     elif isinstance(var.typ, model.Struct):
-        return MakeStructWidget(var, data, name)
+        return StructWidget(var, data, name)
     elif isinstance(var.typ, model.Array):
         if isinstance(var.typ.GetType(), model.Value):
-            return MakeSimpleArrayWidget(var, data, name)
+            return SimpleArrayWidget(var, data, name)
         else:
             return ComplexArrayWidget(var, data, name)
     else:
         raise RuntimeError("Unknown type in MakeWidget")
-
-def OnEntryChanged(entry, event, var, data):
-    try:
-        val = int(entry.get_text())
-        data.Set(var.loc, val)
-    except ValueError:
-        pass
 
 class ChannelGauge(gtk.VBox):
     def __init__(self, text):
