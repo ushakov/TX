@@ -3,34 +3,36 @@ import gobject
 
 import model
 
-def MakeComplexArrayWidget(var, data, label):
-    frame = gtk.Frame()
-    flab = gtk.HBox()
-    text = gtk.Label(label)
-    flab.add(text)
-    combo = gtk.combo_box_new_text()
-    flab.add(combo)
-    for i in range(var.typ.GetLength()):
-        if var.typ.HaveNames():
-            combo.append_text(var.typ.GetName(i))
-        else:
-            combo.append_text("%s" % (i+1))
-    frame.set_label_widget(flab)
-    combo.set_active(0)
-    combo.connect("changed", FillInCAW, frame, var, data)
-    FillInCAW(combo, frame, var, data)
-    return frame
+class ComplexArrayWidget(gtk.Frame):
+    def __init__(self, var, data, label):
+        gtk.Frame.__init__(self)
+        flab = gtk.HBox()
+        text = gtk.Label(label)
+        flab.add(text)
+        self.combo = gtk.combo_box_new_text()
+        flab.add(self.combo)
+        self.var = var
+        self.data = data
+        for i in range(var.typ.GetLength()):
+            if var.typ.HaveNames():
+                self.combo.append_text(var.typ.GetName(i))
+            else:
+                self.combo.append_text("%s" % (i+1))
+        self.set_label_widget(flab)
+        self.combo.set_active(0)
+        self.combo.connect("changed", self.FillIn, data)
+        self.FillIn(None, data)
 
-def FillInCAW(combo, frame, var, data):
-    idx = combo.get_active()
-    v = var.Get(idx)
-    children = frame.get_children()
-    for child in children:
-        if child != frame.get_label_widget():
-            frame.remove(child)
-    assert isinstance(v.typ, model.Struct)
-    frame.add(MakeStructWidgetInternals(v, data))
-    frame.show_all()
+    def FillIn(self, dummy, data):
+        idx = self.combo.get_active()
+        v = self.var.Get(idx)
+        children = self.get_children()
+        for child in children:
+            if child != self.get_label_widget():
+                self.remove(child)
+        assert isinstance(v.typ, model.Struct)
+        self.add(MakeStructWidgetInternals(v, data))
+        self.show_all()
 
 def MakeSingleEntry(var, data, name):
     hb = gtk.HBox()
@@ -92,9 +94,9 @@ def MakeWidget(var, data, name):
         if isinstance(var.typ.GetType(), model.Value):
             return MakeSimpleArrayWidget(var, data, name)
         else:
-            return MakeComplexArrayWidget(var, data, name)
+            return ComplexArrayWidget(var, data, name)
     else:
-        raise RuntimeError("Unknown type is MakeWidget")
+        raise RuntimeError("Unknown type in MakeWidget")
 
 def OnEntryChanged(entry, event, var, data):
     try:
