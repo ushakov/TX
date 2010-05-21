@@ -66,7 +66,7 @@ $(TARGETS:%=%-build): %-build: %.elf %.bin %.hex %.eep %.dmp
 #	-git commit -e -a -uno
 	@echo $< done
 
-$(TARGETS:%=%-upload): %: %-build
+$(TARGETS:%=%-upload): %-upload: %-build
 	./upload.sh $*
 
 $(TARGETS): %: %-build
