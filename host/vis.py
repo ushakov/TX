@@ -159,13 +159,21 @@ class ChannelGauge(gtk.VBox):
         gtk.VBox.__init__(self)
         self.label = gtk.Label(text)
         self.label.set_alignment(0, 0.5)
+        hbox = gtk.HBox()
         self.bar = gtk.ProgressBar()
         self.bar.set_pulse_step(0)
+        self.digits = gtk.Label()
+        self.digits.set_width_chars(8)
+        self.digits.set_alignment(1, 0.5)
+        hbox.pack_start(self.bar)
+        hbox.pack_start(self.digits)
         self.pack_start(self.label, expand=False)
-        self.pack_start(self.bar, expand=False)
+        self.pack_start(hbox, expand=False)
 
     def Set(self, val):
-        self.bar.set_fraction((val - 3000) / 2400.0 + 0.5)
+        val = (val - 3000) / 1000.0  # -1.2..1.2
+        self.bar.set_fraction(val / 2.4 + 0.5)
+        self.digits.set_text("%s%%" % (val*100))
 
 class Channels(gtk.Frame):
     def __init__(self, n):
