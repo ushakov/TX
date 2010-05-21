@@ -4,7 +4,7 @@
 #include <inttypes.h>
 
 #define CURVE_NODES 7
-#define NUM_CHANS   6
+#define NUM_CHANS   8
 #define NUM_CTLS   10
 #define NUM_MODES   3
 

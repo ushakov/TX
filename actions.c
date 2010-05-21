@@ -114,7 +114,7 @@ void TX_calibrate() {
 }
 
 void TX_reset() {
-    model.num_ch = 6;
+    model.num_ch = NUM_CHANS;
     for (int m = 0; m < NUM_MODES; ++m) {
         Mode *mode = &model.modes[m];
         for (int ctl = 0; ctl < NUM_CTLS; ++ctl) {
