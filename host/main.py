@@ -9,9 +9,12 @@ import proto
 import config
 
 class MainUI(object):
-    def __init__(self):
-        self.tx = ser.TXComm()
-        self.data = self.tx.GetData()
+    def __init__(self, real_tx):
+        self.tx = None
+        self.data = None
+        if real_tx:
+            self.tx = ser.TXComm()
+            self.data = self.tx.GetData()
         self.var = model.model
         if self.tx:
             self.data = self.tx.GetData()
@@ -128,7 +131,7 @@ class MainUI(object):
 
 
 def main():
-    ui = MainUI()
+    ui = MainUI(True)
     ui.InitUI()
     ui.Run()
         
