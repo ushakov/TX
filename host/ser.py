@@ -53,6 +53,14 @@ class TXComm(object):
         if val < 0:
             val += 256
         self.Send("S %03x %02x" % (where, val))
+        while True:
+            line = self.Check()
+            if not line:
+                continue
+            if line == "DONE":
+                return
+            if line == "Err":
+                raise RuntimeError("comm error")
 
     def GetData(self):
         self.Send("D")
